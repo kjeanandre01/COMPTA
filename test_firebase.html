@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Test Firebase TRANSCHAINES</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<style>
+body{font-family:Arial,sans-serif;max-width:700px;margin:40px auto;padding:20px}
+h1{color:#C0392B}
+.ok{color:green;font-weight:700} .err{color:red;font-weight:700} .info{color:#666}
+.box{padding:12px;border-radius:6px;margin:8px 0;font-size:13px}
+.box.ok{background:#D4EDDA;border:1px solid #C3E6CB}
+.box.err{background:#F8D7DA;border:1px solid #F5C6CB}
+.box.info{background:#D1ECF1;border:1px solid #BEE5EB}
+button{padding:10px 20px;background:#C0392B;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;margin:6px}
+button:hover{background:#A93226}
+pre{background:#2D2D2D;color:#F8F8F2;padding:12px;border-radius:6px;font-size:12px;overflow:auto}
+</style>
+</head>
+<body>
+<h1>🔥 Diagnostic Firebase — TRANSCHAINES</h1>
+
+<div id="log"></div>
+
+<div style="margin-top:20px">
+  <button onclick="testLecture()">📖 Tester la lecture</button>
+  <button onclick="testEcriture()">✍️ Tester l'écriture</button>
+  <button onclick="testComplet()">🔄 Test complet</button>
+  <button onclick="document.getElementById('log').innerHTML=''">🗑 Effacer</button>
+</div>
+
+<script>
+var firebaseConfig = {
+  apiKey: "AIzaSyCu39p22FaeprgZjI97u6p1-iOrsa9VOfM",
+  authDomain: "erp-transchaines.firebaseapp.com",
+  databaseURL: "https://erp-transchaines-default-rtdb.firebaseio.com",
+  projectId: "erp-transchaines",
+  storageBucket: "erp-transchaines.firebasestorage.app",
+  messagingSenderId: "553157506155",
+  appId: "1:553157506155:web:0c454fd3ba4f2876b72d2e"
+};
+
+function log(msg, type){
+  type = type||'info';
+  var d = document.createElement('div');
+  d.className = 'box '+type;
+  d.innerHTML = msg;
+  document.getElementById('log').appendChild(d);
+  console.log(msg);
+}
+
+var app, db;
+
+function init(){
+  try{
+    if(firebase.apps.length > 0){
+      firebase.apps.forEach(function(a){a.delete();});
+    }
+    app = firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    log('✅ Firebase initialisé: ' + firebaseConfig.databaseURL, 'ok');
+    return true;
+  }catch(e){
+    log('❌ Erreur init: ' + e.message, 'err');
+    return false;
+  }
+}
+
+function testLecture(){
+  log('--- Test lecture ---', 'info');
+  if(!init()) return;
+  db.ref('comptasysco/TRANSCHAINES/test_connexion').once('value')
+    .then(function(snap){
+      log('✅ Lecture OK — valeur: ' + JSON.stringify(snap.val()), 'ok');
+    })
+    .catch(function(e){
+      log('❌ Lecture échouée: ' + e.message + '<br><br>👉 <strong>Cause probable: Règles Firebase trop restrictives</strong><br>Solution: voir les instructions en bas', 'err');
+    });
+}
+
+function testEcriture(){
+  log('--- Test écriture ---', 'info');
+  if(!init()) return;
+  var testData = {timestamp: new Date().toISOString(), test: 'ComptaSYSCO', ok: true};
+  db.ref('comptasysco/TRANSCHAINES/test_connexion').set(testData)
+    .then(function(){
+      log('✅ Écriture OK — données sauvegardées dans Firebase!', 'ok');
+    })
+    .catch(function(e){
+      log('❌ Écriture échouée: ' + e.message + '<br><br>👉 <strong>Règles Firebase bloquent l\'écriture</strong>', 'err');
+    });
+}
+
+function testComplet(){
+  log('=== TEST COMPLET ===', 'info');
+  
+  // 1. SDK chargé?
+  if(typeof firebase === 'undefined'){
+    log('❌ SDK Firebase non chargé (vérifier connexion internet)', 'err');
+    return;
+  }
+  log('✅ SDK Firebase chargé', 'ok');
+  
+  // 2. Init
+  if(!init()) return;
+  
+  // 3. Connexion
+  db.ref('.info/connected').on('value', function(snap){
+    if(snap.val() === true){
+      log('✅ Connecté à Firebase Realtime Database', 'ok');
+    } else {
+      log('⚠️ En attente de connexion...', 'info');
+    }
+  });
+  
+  // 4. Écriture
+  db.ref('comptasysco/TRANSCHAINES/ping').set({t: Date.now(), src: window.location.href})
+    .then(function(){
+      log('✅ ÉCRITURE RÉUSSIE — Firebase fonctionne!', 'ok');
+      log('🎉 Votre base de données est accessible depuis: ' + window.location.hostname, 'ok');
+    })
+    .catch(function(e){
+      log('❌ ÉCRITURE BLOQUÉE: ' + e.message, 'err');
+      
+      // Diagnostique précis
+      if(e.code === 'PERMISSION_DENIED'){
+        log([
+          '<strong>📋 Solution — Modifier les règles Firebase:</strong><br>',
+          '1. Aller sur <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a><br>',
+          '2. Votre projet <strong>erp-transchaines</strong><br>',
+          '3. Menu gauche → <strong>Realtime Database</strong><br>',
+          '4. Onglet <strong>Règles</strong><br>',
+          '5. Remplacer TOUT le contenu par:<br>',
+          '<pre>{\n  "rules": {\n    ".read": true,\n    ".write": true\n  }\n}</pre>',
+          '6. Cliquer <strong>Publier</strong>'
+        ].join(''), 'err');
+      }
+    });
+  
+  // 5. Lecture
+  setTimeout(function(){
+    db.ref('comptasysco/TRANSCHAINES').once('value')
+      .then(function(snap){
+        var data = snap.val();
+        log('✅ LECTURE RÉUSSIE — Données existantes: ' + (data ? Object.keys(data).join(', ') : 'aucune (base vide — normal)'), 'ok');
+      })
+      .catch(function(e){
+        log('❌ LECTURE BLOQUÉE: ' + e.message, 'err');
+      });
+  }, 1000);
+}
+
+// Auto-test au chargement
+window.onload = function(){
+  log('Page chargée depuis: ' + window.location.href, 'info');
+  log('SDK Firebase disponible: ' + (typeof firebase !== 'undefined' ? '✅ OUI' : '❌ NON'), typeof firebase !== 'undefined' ? 'ok' : 'err');
+  log('Cliquer "Test complet" pour diagnostiquer', 'info');
+};
+</script>
+
+<div style="margin-top:30px;padding:16px;background:#FFF3CD;border:1px solid #FFEAA7;border-radius:6px">
+  <h3 style="margin:0 0 10px;color:#856404">📋 Si l'écriture est bloquée — Corriger les règles Firebase</h3>
+  <ol style="margin:0;font-size:13px">
+    <li>Aller sur <a href="https://console.firebase.google.com" target="_blank"><strong>console.firebase.google.com</strong></a></li>
+    <li>Cliquer sur votre projet <strong>erp-transchaines</strong></li>
+    <li>Menu gauche → <strong>Realtime Database</strong></li>
+    <li>Onglet <strong>Règles</strong> (en haut)</li>
+    <li>Remplacer le contenu par:</li>
+  </ol>
+  <pre style="margin:10px 0">{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}</pre>
+  <p style="font-size:12px;color:#856404;margin:0">6. Cliquer <strong>"Publier"</strong> — La synchronisation fonctionnera immédiatement.</p>
+</div>
+
+</body>
+</html>
